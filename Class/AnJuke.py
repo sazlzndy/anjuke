@@ -117,7 +117,7 @@ class ZhongHuan(object):
     self._houseInfoCsvFilePaht = "Result/ZhongHuanInfos{0}.csv"  # url地址
     self._urlModel = "http://nc.zhdclink.com/house/detail/{Id}" #url
     self._proxtList = "https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list" #代理列表
-
+#http://2019.ip138.com/ic.asp 查看本机IP
   #下载房屋信息
   def DownHouses(self):
     data = list()
@@ -169,7 +169,7 @@ class ZhongHuan(object):
   #保存数据至本地
   def SaveData(self,data,filePath):
     #db = pymysql.connect("localhost", "root", "123456", "houseinfo")
-    engine = create_engine('mysql+pymysql://root:123456@localhost:3306/houseinfo')
+    engine = create_engine('mysql+pymysql://root:@localhost:3306/houseinfo')
     pdData = pd.DataFrame(data)
     pdData.to_csv(filePath.replace("{0}",time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))), encoding='utf_8_sig')
     pdData.to_sql("houseinfo",engine,if_exists="append", index= False)
@@ -202,20 +202,19 @@ class ZhongHuan(object):
 
   def GetProxies(self):
     proxies = {
-      "http": "http://10.10.1.10:3128",
-      "https": "http://10.10.1.10:1080",
+      "http": "http://121.40.138.161:8000"
     }
     return proxies
 
   #下载网页
-  def DownPage(self, urlPath,index=300,proxies = ''):
+  def DownPage(self, urlPath,index=300,proxies = {"http": "http://121.40.138.161:8000"}):
     theHeaders = {
       'Referer': 'http://nc.zhdclink.com/house/index/',
       'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36',
       #'Cookie' : 'aQQ_ajkguid=2400BD1D-02AC-9802-EC9E-3D24FFB25706; wmda_uuid=86ee38557d0872ca0b8196bdd23a8df9; wmda_new_uuid=1; wmda_visited_projects=%3B6289197098934; 58tj_uuid=d569f468-a28e-44bc-a1f2-1e9150242e71; als=0; browse_comm_ids=1026858; _ga=GA1.2.1746640190.1544437827; ctid=41; ANJUKE_BUCKET=pc-home%3AErshou_Web_Home_Home-a; sessid=BB9E53DA-8AB9-FEE7-1D23-E0F73FFBDE09; lps=http%3A%2F%2Fnc.anjuke.com%2Fsale%2Fhonggutannanchang-jiulonghuxinqu%2Fp2%2F%7C; twe=2; _gid=GA1.2.2068275622.1550455754; wmda_session_id_6289197098934=1550481535107-7934208b-6c8d-5ecb; init_refer=https%253A%252F%252Fnc.anjuke.com%252Fsale%252F; new_uv=7; new_session=0; __xsptplusUT_8=1; _gat=1; __xsptplus8=8.8.1550481535.%232%7Csp0.baidu.com%7C%7C%7Canjueke%7C%23%23F7_9kDasR4JqhV5BruqhF7SUfW8-Hr5O%23'.format(time.time())
-     'Cookie': "city_token=%E5%8D%97%E6%98%8C; login_token=uSDWeKN57IikxJ2sFdT4BXVRhU1OcqLEZlGgCMp9jm0fzrab; UM_distinctid=169b2fbeb7b300-0f7cb459947171-424e0b28-1fa400-169b2fbeb7c13c; CNZZDATA1273460933=1237323342-1553485980-%7C1553492604"
+     'Cookie': "city_token=%E5%8D%97%E6%98%8C; login_token=mkR0fcbZMhzDsnqSFNaXur8WU5pHGlJVvy2wdB1ojPOKCL6E; UM_distinctid=169b57467a6777-085968d1641b7d-7a1437-1fa400-169b57467a7767; CNZZDATA1273460933=662536553-1553527499-%7C1553527499"
     }
-    time.sleep(0.3)
+    time.sleep(0.5)
     print("下载{}数据中".format(urlPath))
 
     text = requests.get(url=urlPath,headers=theHeaders,proxies=proxies).text

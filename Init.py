@@ -1,7 +1,7 @@
-import requests
+import requests #pip3 install  requests
 from Class import AnJuke
-from lxml import etree
-import pandas as pd #csv保存模块
+from lxml import etree #pip3 install lxml
+import pandas as pd #csv保存模块 #pip3 install pandas
 import random #随机模块
 
 
