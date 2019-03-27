@@ -10,6 +10,7 @@ import json
 import os
 import re
 import random #随机模块
+from Class import HouseInfo
 
 #安居客
 class AnJuKe(object):
@@ -120,15 +121,15 @@ class ZhongHuan(object):
     self._houseInfoCsvFilePaht = "Result/ZhongHuanInfos{0}.csv"  # url地址
     self._urlModel = "http://nc.zhdclink.com/house/detail/{Id}" #url
     self._proxtList = "https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list" #代理列表
-#http://2019.ip138.com/ic.asp 查看本机IP
+
   #下载房屋信息
   def DownHouses(self):
-    proxies = self.GetProxies()
+    #proxies = self.GetProxies()
     data = list()
     url = self._baseUrl;
     while(len(url) > 0):
       url = self.SaveHouseInfo(data,url)
-      if len(data) > 1000:
+      if len(data) > 10:
           self.SaveData(data, self._houseInfoCsvFilePaht)
           data.clear()
     self.SaveData(data,self._houseInfoCsvFilePaht)
@@ -150,25 +151,24 @@ class ZhongHuan(object):
       unitPrice = childInfo.xpath(".//div[2]/p[2]")[0].text.strip()
       #print("保存{0}".format(etree.tostring(details)))
       print("保存{0}".format(title.text.strip()))
-      data.append({
-        "HouseInfoId" : urljoin(self._indexUrl,title.attrib['href']).replace(self._urlModel.replace("{Id}",""),""),
-        "Title": title.text.strip(),
-        "URL":urljoin(self._indexUrl,title.attrib['href']),
-        "HouseType":details[1],
-        "Area":details[2],
-        "Floor":commAddress[2],
-        "YearOfBuild":commAddress[3],
-        "SpecificAddress":commAddress[0],
-        "TotalPrices":priceDet,
-        "TheUnitPrice":unitPrice.replace("元/㎡","")
-      })
+      obj = HouseInfo.HouseInfo()
+      obj.URL = urljoin(self._indexUrl, title.attrib['href'])
+      obj.HouseInfoId = urljoin(self._indexUrl, title.attrib['href']).replace(self._urlModel.replace("{Id}", ""), "")
+      obj.Title = title.text.strip()
+      obj.HouseType =  details[1]
+      obj.Area = details[2]
+      obj.Floor =  commAddress[2]
+      obj.YearOfBuild = commAddress[3]
+      obj.SpecificAddress =  commAddress[0]
+      obj.TotalPrices = priceDet
+      obj.TheUnitPrice = unitPrice.replace("元/㎡", "")
+      data.append(obj.to_dict())
     infoNextUrl = infoHtml.xpath(self._nextUrl)
     #print(infoNextUrl[0].xpath("..")[0].attrib['href'])
     if len(infoNextUrl) > 0:
       return urljoin(self._indexUrl,infoNextUrl[0].xpath("..")[0].attrib['href'])
     else:
       return ""
-
 
   #保存数据至本地
   def SaveData(self,data,filePath):
@@ -204,6 +204,7 @@ class ZhongHuan(object):
 
     self.SaveData(data,self._csvFilePaht)
 
+  #获取代理池
   def GetProxies(self):
     filepath = 'verified_proxies.json'
     #判断文件是否存在
@@ -221,7 +222,7 @@ class ZhongHuan(object):
         host = proxy_json["host"]
         port = proxy_json['port']
         type = proxy_json['type']
-        url = 'http://icanhazip.com'
+        url = 'http://icanhazip.com'#http://2019.ip138.com/ic.asp 查看本机IP
         proxy = {
             "http": "{0}://{1}:{2}".format(type,host,port)
         }
@@ -249,13 +250,16 @@ class ZhongHuan(object):
       #'Cookie' : 'aQQ_ajkguid=2400BD1D-02AC-9802-EC9E-3D24FFB25706; wmda_uuid=86ee38557d0872ca0b8196bdd23a8df9; wmda_new_uuid=1; wmda_visited_projects=%3B6289197098934; 58tj_uuid=d569f468-a28e-44bc-a1f2-1e9150242e71; als=0; browse_comm_ids=1026858; _ga=GA1.2.1746640190.1544437827; ctid=41; ANJUKE_BUCKET=pc-home%3AErshou_Web_Home_Home-a; sessid=BB9E53DA-8AB9-FEE7-1D23-E0F73FFBDE09; lps=http%3A%2F%2Fnc.anjuke.com%2Fsale%2Fhonggutannanchang-jiulonghuxinqu%2Fp2%2F%7C; twe=2; _gid=GA1.2.2068275622.1550455754; wmda_session_id_6289197098934=1550481535107-7934208b-6c8d-5ecb; init_refer=https%253A%252F%252Fnc.anjuke.com%252Fsale%252F; new_uv=7; new_session=0; __xsptplusUT_8=1; _gat=1; __xsptplus8=8.8.1550481535.%232%7Csp0.baidu.com%7C%7C%7Canjueke%7C%23%23F7_9kDasR4JqhV5BruqhF7SUfW8-Hr5O%23'.format(time.time())
      'Cookie': "UM_distinctid=16913127fc745-0ec4ea4970d57f-424e0b28-1fa400-16913127fc8b51; city_token=%E5%8D%97%E6%98%8C; login_token=l6TO0uWIswbQR7Pmzg4EN8aUintBqdjDMH25fAcGv9eFyKVL; CNZZDATA1273460933=196818978-1550802930-null%7C1553570296"
     }
-    time.sleep(0.5)
+    time.sleep(0.3)
     print("下载{}数据中".format(urlPath))
 
     text = requests.get(url=urlPath,headers=theHeaders,proxies=proxies).text
     if text.find("502 Bad Gateway") >= 0 :
       #尝试下一页
       if index < 5:
+        filepath = "errorUrl.txt"
+        with open(filepath, 'a+') as f:
+          f.write(urlPath + '\n')
         pageIndex = re.search('[\d]+',urlPath).group(0)
         newPageIndex = int(pageIndex)+1
         newUrl = urlPath.replace(str(pageIndex),str(newPageIndex))
@@ -276,6 +280,12 @@ class ZhongHuan(object):
 
 
 
+
+#鸿基房产
 class HongJi(object):
   def __init__(self):
     self._apiUrl = 'http://www.jxhjfc.com/ajax.do?method=searchWebEsf&key=0%7C0%7C0%7C0%7C0%7C0%7C0%7C0%7C0%7C0%7C0&nowPage=1&size=30&order='
+
+
+
+
