@@ -11,6 +11,7 @@ import os
 import re
 import random #随机模块
 from Class import HouseInfo
+from Class import BaseDownloader
 
 #安居客
 class AnJuKe(object):
@@ -112,7 +113,7 @@ class AnJuKe(object):
 
 
 #中环地产
-class ZhongHuan(object):
+class ZhongHuan(BaseDownloader.BaseDownloader):
   def __init__(self):
     self._indexUrl = "http://nc.zhdclink.com"
     self._baseUrl = "http://nc.zhdclink.com/house/index"
@@ -275,7 +276,7 @@ class ZhongHuan(object):
             return ""
     else:
         return text
-    #print(text)
+  
 
 
 
