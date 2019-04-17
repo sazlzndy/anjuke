@@ -8,12 +8,12 @@ import random #随机模块
 
 
 
-ob = AnJuke.AnJuKe()
+ob = AnJuke.AnJuKeApi()
 
-ob = AnJuke.ZhongHuan()
+#ob = AnJuke.ZhongHuan()
 
 
-ob.DownHouses()
+ob.DownHousesByApi()
 
 exit()
 ob.DownURL()
