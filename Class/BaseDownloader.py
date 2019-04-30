@@ -27,6 +27,8 @@ class BaseDownloader(object):
     SourceHouseInfo = {} #已有数据字典 key=ID value=总价
     ApiUrl = ""
     _downTimeSleep = 0.3
+    _userCache = True
+
 
     """下载房屋信息
     """
@@ -46,6 +48,8 @@ class BaseDownloader(object):
 
     #新建房屋缓存
     def CreateSourceHouseInfo(self):
+        if(self._userCache):
+            return
         print("新建数据缓存中")
         engine = create_engine(self.MySqlString)
         pdData = pd.read_sql_query("select HouseInfoId,TotalPrices FROM (select HouseInfoId,TotalPrices FROM houseinfo where SourceUrl='{0}' ORDER BY Id desc ) as a GROUP BY HouseInfoId ".format(self.UrlName),engine)
@@ -114,16 +118,18 @@ class BaseDownloader(object):
             pdData.to_csv(filePath.replace("{0}",time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))), encoding='utf_8_sig')
         pdData.to_sql("houseinfo",engine,if_exists="append", index= False)
 
-    # 下载网页
 
-
-    def DownPage(self, urlPath, sleepNumber=300, proxies='', index=0):
-        theHeaders = {
+    def CreateHeaders(self):
+        return {
             'Referer': 'http://nc.zhdclink.com/house/index/',
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36',
             # 'Cookie' : 'aQQ_ajkguid=2400BD1D-02AC-9802-EC9E-3D24FFB25706; wmda_uuid=86ee38557d0872ca0b8196bdd23a8df9; wmda_new_uuid=1; wmda_visited_projects=%3B6289197098934; 58tj_uuid=d569f468-a28e-44bc-a1f2-1e9150242e71; als=0; browse_comm_ids=1026858; _ga=GA1.2.1746640190.1544437827; ctid=41; ANJUKE_BUCKET=pc-home%3AErshou_Web_Home_Home-a; sessid=BB9E53DA-8AB9-FEE7-1D23-E0F73FFBDE09; lps=http%3A%2F%2Fnc.anjuke.com%2Fsale%2Fhonggutannanchang-jiulonghuxinqu%2Fp2%2F%7C; twe=2; _gid=GA1.2.2068275622.1550455754; wmda_session_id_6289197098934=1550481535107-7934208b-6c8d-5ecb; init_refer=https%253A%252F%252Fnc.anjuke.com%252Fsale%252F; new_uv=7; new_session=0; __xsptplusUT_8=1; _gat=1; __xsptplus8=8.8.1550481535.%232%7Csp0.baidu.com%7C%7C%7Canjueke%7C%23%23F7_9kDasR4JqhV5BruqhF7SUfW8-Hr5O%23'.format(time.time())
             'Cookie': "UM_distinctid=16913127fc745-0ec4ea4970d57f-424e0b28-1fa400-16913127fc8b51; city_token=%E5%8D%97%E6%98%8C; login_token=l6TO0uWIswbQR7Pmzg4EN8aUintBqdjDMH25fAcGv9eFyKVL; CNZZDATA1273460933=196818978-1550802930-null%7C1553570296"
         }
+
+    # 下载网页
+    def DownPage(self, urlPath, sleepNumber=300, proxies='', index=0):
+        theHeaders = self.CreateHeaders()
         time.sleep(self._downTimeSleep)
         print("下载{}数据中".format(urlPath))
 

@@ -8,24 +8,104 @@ from urllib.parse import urljoin
 from sqlalchemy import create_engine
 import json
 
+import js2py
+import execjs
+
+from selenium import webdriver
+
 import re
 import random #随机模块
 from Class import HouseInfo
 from Class import BaseDownloader
 
+
+
 class AnJuKeApi(BaseDownloader.BaseDownloader):
   def __init__(self):
     self.UrlName = "安居客"
-    self.ApiUrl = "https://nc.anjuke.com/v3/ajax/map/sale/3866/prop_list/?room_num=-1&price_id=-1&area_id=-1&floor=-1&orientation=-1&is_two_years=0&is_school=0&is_metro=0&order_id=0&p={0}&zoom=19&lat={1}_{2}&lng={3}_{4}&kw=&maxp=99&et=b1d5bf&ib=1&bst=pem360"
+    #self.ApiUrl = "https://nc.anjuke.com/v3/ajax/map/sale/3866/prop_list/?room_num=-1&price_id=-1&area_id=-1&floor=-1&orientation=-1&is_two_years=0&is_school=0&is_metro=0&order_id=0&p={0}&zoom=12&lat={1}_{2}&lng={3}_{4}&kw=&maxp=99&et=b1d5bf&ib=1&bst=pem360"
+    self.ApiUrl = "https://nc.anjuke.com/v3/ajax/map/sale/711/prop_list/?room_num=-1&price_id=-1&area_id=-1&floor=-1&orientation=-1&is_two_years=0&is_school=0&is_metro=0&order_id=0&p=1&zoom=12&lat=28.460809_28.917598&lng=115.502388_116.226782&kw=&maxp=99&et=43d2bd&ib=1&bst=pem592"
+
+    self.ApiHeaderUrl = "https://nc.anjuke.com/map/sale/?from=navigation"
+
     self.ApiPageReg = "(?<=&p\=)\d+"
     self.MinLat = 28.51916
     self.MaxLat = 28.867442
     self.MinLng = 115.698866
     self.MaxLng = 116.134652
 
+
+  def GetSession(self):
+
+
+    headerInfo = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
+      'Host': 'nc.anjuke.com',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+      'Accept-Encoding': "gzip, deflate, br",
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': "1"
+    }
+
+    s = requests.Session()
+    r = s.get(self.ApiHeaderUrl,headers=headerInfo)
+    print(r.cookies.values())
+    r = s.get(self.ApiUrl,headers=headerInfo,cookies=r.cookies)
+    print(r.text)
+    #return s
+
+    # 创建chrome参数对象
+    options = webdriver.ChromeOptions()
+
+    # 把chrome设置成无界面模式，不论windows还是linux都可以，自动适配对应参数
+    options.add_argument('headless')
+
+
+    brguge = webdriver.Chrome(executable_path="C:\\Users\\Administrator\\AppData\\Local\\Google\\Chrome\\Application\\chromedriver",chrome_options=options)
+    brguge.get(self.ApiHeaderUrl)  # 发送get请求
+    #sessid = brguge.get_cookie("sessid")["value"]
+    print(brguge.get_cookie())
+    return sessid
+
+
+    requestInfo2 = requests.get(url=self.ApiHeaderUrl,headers=headerInfo).text
+    infoHtml = etree.HTML(requestInfo2)
+    bst = infoHtml.xpath('//*[@id="bst"]')[0]
+    tkval = infoHtml.xpath('//*[@id="tkval"]')[0]
+    ver_val = infoHtml.xpath('//*[@id="ver_val"]')[0]
+
+
+    with open('./Class/Ershou_Web_Mapv3_Home.js','r', encoding='UTF-8') as fp:
+      js = fp.read()
+      print(execjs.get().name)
+      print("加载JS文件完成")
+      loader = execjs.compile(js)
+      #theJs2py = js2py.eval_js(js)
+      print("execjs加载JS文件完成")
+      r = loader.call('add',1,2)
+      #r = theJs2py('3434', '1c278d023f31d59f88790b80d1695f82')
+      print("add完成{0}".format(r))
+      r = loader.call('del', "3434","1c278d023f31d59f88790b80d1695f82")
+      #context = js2py.eval_js(js)
+      #vl5x = context.window.gettoken('3434', '1c278d023f31d59f88790b80d1695f82')
+      vl5x = r
+
+    print('{0}|{1}|{2}|{3}'.format(bst.attrib['value'],tkval.attrib['value'],ver_val.attrib['value'],vl5x))
+
+
+
   def SaveHouseInfoByApi(self,data,url):
-    jsonstr = self.DownPage(url)
+    theSession = self.GetSession()
+    return ""
+
+
+    jsonstr = self.DownPage(url,theSession)
     apiresult = json.loads(jsonstr)
+
+    if apiresult['code'] == 1 :
+      return ""
+
     total = apiresult['val']['pages']['total']
     page_size = apiresult['val']['pages']['page_size']
     page = apiresult['val']['pages']['page']
@@ -54,15 +134,29 @@ class AnJuKeApi(BaseDownloader.BaseDownloader):
         return self.ApiUrl.format(page+1, self.MinLat,self.MaxLat,self.MinLng,self.MaxLng)
     else:
         if total > 3500 :
-            theMinLng = self.MinLat
+            theMinLng = self.MinLng
+            theMaxLng = self.MaxLng
+            theMaxLat = 0
             while theMinLng < self.MaxLng:
               theMinLat = self.MinLat
+
               while theMinLat < self.MaxLat :
-                theMinLat = theMinLat + ((self.MaxLat - self.MinLat) / 10)
-                return self.ApiUrl.format(1,theMinLat, self.MaxLat,theMinLng, self.MaxLng)
-              theMinLng = theMinLng + ((self.MaxLng - self.MinLng) / 10)
+                  if theMaxLat > 0 :
+                      theMinLat = theMaxLat
+                  theMaxLat = theMinLat + ((self.MaxLat - self.MinLat) / 10)
+                  return self.ApiUrl.format(1,theMinLat, theMaxLat,theMinLng, theMaxLng)
+              if theMaxLng != self.MaxLng:
+                theMinLng = theMaxLng
+              theMaxLng = theMinLng + ((self.MaxLng - self.MinLng) / 10)
         return ""
 
+    def CreateHeaders(self):
+        return {
+            'Referer': 'https://nc.anjuke.com/map/sale/?from=navigation',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36',
+            # 'Cookie' : 'aQQ_ajkguid=2400BD1D-02AC-9802-EC9E-3D24FFB25706; wmda_uuid=86ee38557d0872ca0b8196bdd23a8df9; wmda_new_uuid=1; wmda_visited_projects=%3B6289197098934; 58tj_uuid=d569f468-a28e-44bc-a1f2-1e9150242e71; als=0; browse_comm_ids=1026858; _ga=GA1.2.1746640190.1544437827; ctid=41; ANJUKE_BUCKET=pc-home%3AErshou_Web_Home_Home-a; sessid=BB9E53DA-8AB9-FEE7-1D23-E0F73FFBDE09; lps=http%3A%2F%2Fnc.anjuke.com%2Fsale%2Fhonggutannanchang-jiulonghuxinqu%2Fp2%2F%7C; twe=2; _gid=GA1.2.2068275622.1550455754; wmda_session_id_6289197098934=1550481535107-7934208b-6c8d-5ecb; init_refer=https%253A%252F%252Fnc.anjuke.com%252Fsale%252F; new_uv=7; new_session=0; __xsptplusUT_8=1; _gat=1; __xsptplus8=8.8.1550481535.%232%7Csp0.baidu.com%7C%7C%7Canjueke%7C%23%23F7_9kDasR4JqhV5BruqhF7SUfW8-Hr5O%23'.format(time.time())
+            'Cookie': "sessid=D5F66A1B-EB3D-C1BE-D024-385222A5BB51; aQQ_ajkguid=8A44C344-C4FA-7994-32DE-A384761E7DE8; lps=http%3A%2F%2Fwww.anjuke.com%2F%3Fpi%3DPZ-baidu-pc-all-biaoti%7C; ctid=41; twe=2; ANJUKE_BUCKET=pc-home%3AErshou_Web_Home_Home-b; 58tj_uuid=d0569853-2fdb-469b-a0c8-993cf7abe9ad; init_refer=; new_uv=1; als=0; wmda_uuid=03ac4fa93e212bf49dfa33da5d5f4245; wmda_new_uuid=1; wmda_session_id_6289197098934=1555552883312-1e23e5d3-82c0-e005; wmda_visited_projects=%3B6289197098934; ajk_member_captcha=101681c88993d62b9b30584744218a62; new_session=0; browse_comm_ids=341485; propertys=oflj2n-pq4wbl_; _ga=GA1.2.1949356682.1555552914; _gid=GA1.2.1054890746.1555552914; __xsptplusUT_8=1; __xsptplus8=8.1.1555552883.1555554441.7%234%7C%7C%7C%7C%7C%23%23BFYm0z9CKD507cHeI7IYDrvCVaALPxht%23"
+        }
 
   def DownHousesByApi(self):
     self.CreateSourceHouseInfo()
@@ -174,16 +268,14 @@ class AnJuKe(object):
     self.SaveData(data,self._csvFilePaht)
 
   #下载网页
-  def DownPage(self, urlPath):
+  def DownPage(self, urlPath,session):
     theHeaders = {
-      'Referer': 'https://nc.anjuke.com/sale/',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36',
-      'Cookie' : 'aQQ_ajkguid=2400BD1D-02AC-9802-EC9E-3D24FFB25706; wmda_uuid=86ee38557d0872ca0b8196bdd23a8df9; wmda_new_uuid=1; wmda_visited_projects=%3B6289197098934; 58tj_uuid=d569f468-a28e-44bc-a1f2-1e9150242e71; als=0; browse_comm_ids=1026858; _ga=GA1.2.1746640190.1544437827; ctid=41; ANJUKE_BUCKET=pc-home%3AErshou_Web_Home_Home-a; sessid=BB9E53DA-8AB9-FEE7-1D23-E0F73FFBDE09; lps=http%3A%2F%2Fnc.anjuke.com%2Fsale%2Fhonggutannanchang-jiulonghuxinqu%2Fp2%2F%7C; twe=2; _gid=GA1.2.2068275622.1550455754; wmda_session_id_6289197098934=1550481535107-7934208b-6c8d-5ecb; init_refer=https%253A%252F%252Fnc.anjuke.com%252Fsale%252F; new_uv=7; new_session=0; __xsptplusUT_8=1; _gat=1; __xsptplus8=8.8.1550481535.%232%7Csp0.baidu.com%7C%7C%7Canjueke%7C%23%23F7_9kDasR4JqhV5BruqhF7SUfW8-Hr5O%23'.format(time.time())
+      'Referer': self.ApiHeaderUrl,
+      'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36'
     }
     time.sleep(1)
     print("下载{}数据中".format(urlPath))
-    text = requests.get(url=urlPath,headers=theHeaders).text
-    #print(text)
+    text = session.get(url=urlPath,headers=theHeaders).text
     return text
 
 
